@@ -1,0 +1,49 @@
+{% extends "page.html" %}
+
+{% block pagemenu %}
+                <li class="active withripple" data-target="#official">Official Plugins</li>
+                <li class="withripple" data-target="#about">About</li>
+{% if admin %}
+                <li class="withripple" data-target="#upload">Upload Plugin File</li>
+                <li><a href="/logout">Logout [<b>{{ admin.username }}</b>]</a></li>
+{% endif %}
+{% endblock %}
+
+{% block pagecontent %}
+                    <div class="well page active" id="official">
+                        <h1 class="header">Official Plugins</h1>
+{% for plugin in plugins %}
+                        <div class="panel panel-default">
+                            <div class="panel-body"><a href="/plugins/{{ plugin[0] }}">{{ plugin[0] }}</a></div>
+                        </div>
+{% endfor %}
+                    </div>
+                    <div class="well page" id="about">
+                        <h1 class="header">About</h1>
+                        <p>This site is setup to provide a central repository for uploading and distributing plugins
+                            to agents using the <a href="https://github.com/ResearchWorx/Cresco/wiki" target="_blank">Cresco</a> framework</p>
+                    </div>
+{% if admin %}
+                    <div class="well page" id="upload">
+                        <form id="plugin-upload-form" class="form-vertical" action="/upload" method="post" enctype="multipart/form-data">
+                            <h2 class="form-signin-heading">Plugin Upload Form</h2>
+                            {% with successes = get_flashed_messages(category_filter=["upload_success"]) %}
+                            {% if successes %}
+                                <p class="success"><strong>Success:</strong> {% for msg in successes %} {{ msg }} {% endfor %}
+                            {% endif %}
+                            {% endwith %}
+                            {% with errors = get_flashed_messages(category_filter=["upload_error"]) %}
+                            {% if errors %}
+                                <p class="error"><strong>Error:</strong> {% for msg in errors %} {{ msg }} {% endfor %}
+                            {% endif %}
+                            {% endwith %}
+                            <div class="form-group">
+                                <label class="control-label" for="inputFile">Plugin to upload</label>
+                                <input type="file" id="inputFile" name="pluginFile" multiple>
+                                <input type="text" readonly class="form-control" placeholder="Browse...">
+                            </div>
+                            <button class="btn btn-lg btn-primary btn-block" type="submit">Upload</button>
+                        </form>
+                    </div>
+{% endif %}
+{% endblock %}

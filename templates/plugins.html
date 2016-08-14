@@ -1,0 +1,41 @@
+{% extends "page.html" %}
+
+{% block pagemenu %}
+                <li><a href="/#official">Official Plugins</a></li>
+                <li><a href="/#about">About</a></li>
+{% if admin %}
+                <li><a href="/#upload">Upload Plugin File</a></li>
+                <li><a href="/logout">Logout [<b>{{ admin.username }}</b>]</a></li>
+{% endif %}
+{% endblock %}
+
+{% block pagecontent %}
+                    <div class="well page active" id="official">
+                        <h1 class="header">{{ name }}</h1>
+{% set current_major_version = plugins[0][4] %}
+{% set current_minor_version = plugins[0][5] %}
+                        <h2>{{ current_major_version }}.{{ current_minor_version }}</h2>
+{% set current_maintenance_version = plugins[0][6] %}
+                        <h4>{{ current_maintenance_version }}</h4>
+{% for plugin in plugins %}
+{% if current_major_version != plugin[4] %}
+    {% set current_major_version = plugin[4] %}
+                        <h2>{{ current_major_version }}.{{ current_minor_version }}</h2>
+                        <h4>{{ current_maintenance_version }}</h4>
+{% endif %}
+{% if current_minor_version != plugin[5] %}
+    {% set current_minor_version = plugin[5] %}
+                        <h2>{{ current_major_version }}.{{ current_minor_version }}</h2>
+                        <h4>{{ current_maintenance_version }}</h4>
+{% endif %}
+{% if current_maintenance_version != plugin[6] %}
+    {% set current_maintenance_version = plugin[6] %}
+                        <h4>{{ current_maintenance_version }}</h4>
+{% endif %}
+                        <button type="button" class="btn btn-link" data-toggle="tooltip" data-placement="top" title="" data-original-title="Click to download" onclick="window.location='/plugin/download/{{ plugin[0] }}'">{{ plugin[2] }}-{{ plugin[4] }}.{{ plugin[5] }}.{{ plugin[6] }}.{{ plugin[7] }}</button>
+{% if admin %}
+                        &nbsp;[ <a href="/plugin/delete/{{ plugin[0] }}">Delete</a> ]
+{% endif %}
+{%  endfor %}
+                    </div>
+{% endblock %}

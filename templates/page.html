@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block basecss %}
+    {% block pagecss %}{% endblock %}
+{% endblock %}
+
+{% block basebody %}
+    <div class="row">
+        <nav class="col-xs-3 menu">
+            <ul>
+{% block pagemenu %}{% endblock %}
+            </ul>
+        </nav>
+        <div class="pages col-xs-9">
+            <div class="row">
+                <div class="col-xs-12">
+{% block pagecontent %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block basejs %}
+    {% block pagejs %}{% endblock %}
+{% endblock %}

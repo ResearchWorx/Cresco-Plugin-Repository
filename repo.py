@@ -10,6 +10,8 @@
     :license: Apache License 2.0, see LICENSE for more details
 """
 
+
+import json
 import os
 import uuid
 import shutil
@@ -25,20 +27,14 @@ from models import Admin
 
 app = Flask(__name__)
 
-app.config.update(dict(
-    DATABASE=os.path.join(app.root_path, 'repo.db'),
-    DEBUG=True,
-    INITIAL_ADMIN=set(['admin', 'password', 'email@email.com', 'FirstName', 'LastName']),
-    SECRET_KEY='cR3sc0_s3KruT!',
-    UPLOAD_FOLDER=os.path.join(app.root_path, 'uploads'),
-    UPLOAD_ALLOWED_EXTENSIONS=set(['jar'])
-))
-app.config.from_envvar('REPO_SETTINGS', silent=True)
+with open('config.json') as json_data_file:
+    config = json.load(json_data_file)
+app.secret_key = config['secret_key']
 
 
 def connect_db():
     """Connects to the specific database."""
-    rv = sqlite3.connect(app.config['DATABASE'])
+    rv = sqlite3.connect(os.path.join(config['database']))
     rv.row_factory = sqlite3.Row
     return rv
 
@@ -51,8 +47,8 @@ def init_db():
     db.commit()
     user_id = uuid.uuid4()
     db.execute('INSERT INTO admins (id, username, password, email, first_name, last_name) VALUES (?, ?, ?, ?, ?, ?)',
-               [str(user_id), app.config['INITIAL_ADMIN'][0], generate_password_hash(app.config['INITIAL_ADMIN'][1]),
-                app.config['INITIAL_ADMIN'][2], app.config['INITIAL_ADMIN'][3], app.config['INITIAL_ADMIN'][4]])
+               [str(user_id), config['admin']['username'], generate_password_hash(config['admin']['password']),
+                config['admin']['email'], config['admin']['first_name'], 'last_name'])
     db.commit()
 
 
@@ -97,8 +93,8 @@ def index():
         admin = None
         if ret is not None and len(ret) > 0:
             admin = Admin(ret)
-    plugins = query_db('SELECT DISTINCT name FROM plugins ORDER BY name ASC')
-    return render_template('index.html', admin=admin, plugins=plugins)
+    plugin_names = query_db('SELECT DISTINCT name FROM plugins ORDER BY name ASC')
+    return render_template('index.html', admin=admin, plugins=plugin_names)
 
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -125,7 +121,7 @@ def logout():
 
 def allowed_file(filename):
     return '.' in filename and \
-            filename.rsplit('.', 1)[1] in app.config['UPLOAD_ALLOWED_EXTENSIONS']
+            filename.rsplit('.', 1)[1] in config['allowed_upload_extensions']
 
 
 @app.route('/upload', methods=['POST'])
@@ -144,9 +140,9 @@ def upload():
         return redirect('/#upload')
     if upload_file and allowed_file(upload_file.filename):
         filename = secure_filename(upload_file.filename)
-        full_filename = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        full_filename = os.path.join(config['upload_dir'], filename)
         upload_file.save(full_filename)
-        plugin_id = str(uuid.uuid4());
+        plugin_id = str(uuid.uuid4())
         plugin_name = None
         plugin_major_version = None
         plugin_minor_version = None
@@ -154,9 +150,9 @@ def upload():
         plugin_build_version = None
         manifest = read_manifest(full_filename)
         for key, value in manifest.main_section.iteritems():
-            if (key == 'artifactId'):
+            if key == 'artifactId':
                 plugin_name = value
-            if (key == 'Implementation-Version'):
+            if key == 'Implementation-Version':
                 versions = value.split('.', 3)
                 plugin_major_version = versions[0]
                 plugin_minor_version = versions[1]
@@ -164,25 +160,27 @@ def upload():
                 plugin_build_version = versions[3]
         jar_name = plugin_name + '-' + plugin_major_version + '.' + plugin_minor_version + '.' + \
                     plugin_maintenance_version + '.jar'
-        new_path = os.path.join(app.config['UPLOAD_FOLDER'], plugin_name)
+        new_path = os.path.join(config['upload_dir'], plugin_name)
         if not os.path.exists(new_path):
             os.makedirs(new_path)
-        new_path = os.path.join(app.config['UPLOAD_FOLDER'], plugin_name + '/' + plugin_major_version)
+        new_path = os.path.join(config['upload_dir'], plugin_name + '/' + plugin_major_version)
         if not os.path.exists(new_path):
             os.makedirs(new_path)
-        new_path = os.path.join(app.config['UPLOAD_FOLDER'], plugin_name + '/' + plugin_major_version + '/' + plugin_minor_version)
+        new_path = os.path.join(config['upload_dir'], plugin_name + '/' + plugin_major_version + '/' +
+                                plugin_minor_version)
         if not os.path.exists(new_path):
             os.makedirs(new_path)
-        new_path = os.path.join(app.config['UPLOAD_FOLDER'], plugin_name + '/' + plugin_major_version + '/' + plugin_minor_version + '/' + \
-                    plugin_maintenance_version)
+        new_path = os.path.join(config['upload_dir'], plugin_name + '/' + plugin_major_version + '/' +
+                                plugin_minor_version + '/' + plugin_maintenance_version)
         if not os.path.exists(new_path):
             os.makedirs(new_path)
-        new_path = os.path.join(app.config['UPLOAD_FOLDER'], plugin_name + '/' + plugin_major_version + '/' + plugin_minor_version + '/' + \
-                    plugin_maintenance_version + '/' + plugin_build_version)
+        new_path = os.path.join(config['upload_dir'], plugin_name + '/' + plugin_major_version + '/' +
+                                plugin_minor_version + '/' + plugin_maintenance_version + '/' + plugin_build_version)
         if not os.path.exists(new_path):
             os.makedirs(new_path)
-        new_path = os.path.join(app.config['UPLOAD_FOLDER'], plugin_name + '/' + plugin_major_version + '/' + plugin_minor_version + '/' + \
-                    plugin_maintenance_version + '/' + plugin_build_version + '/' + jar_name)
+        new_path = os.path.join(config['upload_dir'], plugin_name + '/' + plugin_major_version + '/' +
+                                plugin_minor_version + '/' + plugin_maintenance_version + '/' + plugin_build_version +
+                                '/' + jar_name)
         shutil.move(full_filename, new_path)
         db = get_db()
         db.execute(
@@ -204,7 +202,7 @@ def plugins(name):
         if ret is not None and len(ret) > 0:
             admin = Admin(ret)
     view_plugins = query_db('SELECT * FROM plugins WHERE name = ? ORDER BY major_version DESC, minor_version DESC,' +
-                       'maintenance_version DESC, uploaded DESC', [escape(name)])
+                            'maintenance_version DESC, uploaded DESC', [escape(name)])
     if view_plugins is None or len(view_plugins) == 0:
         return redirect(url_for('index'))
     return render_template('plugins.html', admin=admin, name=name, plugins=view_plugins)
@@ -216,8 +214,6 @@ def download_plugin(plugin_id):
     if plugin is None or len(plugin) == 0:
         flash('No such plugin found!', 'download-error')
         return redirect(url_for('index'))
-    path = os.path.join(app.config['UPLOAD_FOLDER'], plugin[2] + '/' + plugin[4] + '/' + plugin[5] + '/' + plugin[6] +
-                        '/' + plugin[7])
     filename = plugin[2] + '-' + plugin[4] + '.' + plugin[5] + '.' + plugin[6] + '.jar'
     return send_file(plugin[3], as_attachment=True, attachment_filename=filename)
 
@@ -233,15 +229,19 @@ def delete_plugin(plugin_id):
     if plugin is None or len(plugin) == 0:
         flash('No such plugin found!', 'download-error')
         return redirect(url_for('index'))
-    os.remove(plugin[3])
+    try:
+        os.remove(plugin[3])
+    except OSError:
+        pass
     plugin_name = plugin[2]
     name_still_exists = True
     try:
-        os.rmdir(os.path.join(app.config['UPLOAD_FOLDER'], plugin[2] + '/' + plugin[4] + '/' + plugin[5] + '/' + plugin[6] + '/' + plugin[7]))
-        os.rmdir(os.path.join(app.config['UPLOAD_FOLDER'], plugin[2] + '/' + plugin[4] + '/' + plugin[5] + '/' + plugin[6]))
-        os.rmdir(os.path.join(app.config['UPLOAD_FOLDER'], plugin[2] + '/' + plugin[4] + '/' + plugin[5]))
-        os.rmdir(os.path.join(app.config['UPLOAD_FOLDER'], plugin[2] + '/' + plugin[4]))
-        os.rmdir(os.path.join(app.config['UPLOAD_FOLDER'], plugin[2]))
+        os.rmdir(os.path.join(config['upload_dir'], plugin[2] + '/' + plugin[4] + '/' + plugin[5] + '/' + plugin[6] +
+                              '/' + plugin[7]))
+        os.rmdir(os.path.join(config['upload_dir'], plugin[2] + '/' + plugin[4] + '/' + plugin[5] + '/' + plugin[6]))
+        os.rmdir(os.path.join(config['upload_dir'], plugin[2] + '/' + plugin[4] + '/' + plugin[5]))
+        os.rmdir(os.path.join(config['upload_dir'], plugin[2] + '/' + plugin[4]))
+        os.rmdir(os.path.join(config['upload_dir'], plugin[2]))
         name_still_exists = False
     except OSError:
         pass
@@ -253,4 +253,4 @@ def delete_plugin(plugin_id):
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

@@ -1,41 +1,77 @@
 {% extends "page.html" %}
 
 {% block pagemenu %}
-                <li><a href="/#official">Official Plugins</a></li>
-                <li><a href="/#about">About</a></li>
-{% if admin %}
-                <li><a href="/#upload">Upload Plugin File</a></li>
-                <li><a href="/logout">Logout [<b>{{ admin.username }}</b>]</a></li>
-{% endif %}
-{% endblock %}
-
-{% block pagecontent %}
-                    <div class="well page active" id="official">
-                        <h1 class="header">{{ name }}</h1>
 {% set current_major_version = plugins[0][4] %}
 {% set current_minor_version = plugins[0][5] %}
-                        <h2>{{ current_major_version }}.{{ current_minor_version }}</h2>
 {% set current_maintenance_version = plugins[0][6] %}
-                        <h4>{{ current_maintenance_version }}</h4>
+{% set changed = false %}
+                <li><a href="#version{{ current_major_version }}{{ current_minor_version }}">{{ current_major_version }}.{{ current_minor_version }}</a></li>
 {% for plugin in plugins %}
 {% if current_major_version != plugin[4] %}
     {% set current_major_version = plugin[4] %}
-                        <h2>{{ current_major_version }}.{{ current_minor_version }}</h2>
-                        <h4>{{ current_maintenance_version }}</h4>
+    {% set changed = false %}
 {% endif %}
 {% if current_minor_version != plugin[5] %}
     {% set current_minor_version = plugin[5] %}
-                        <h2>{{ current_major_version }}.{{ current_minor_version }}</h2>
-                        <h4>{{ current_maintenance_version }}</h4>
+    {% set changed = false %}
+{% endif %}
+{% if changed %}
+{% set changed = false %}
+                <li><a href="#{{ current_major_version }}{{ current_minor_version }}{{ current_maintenance_version }}">{{ current_major_version }}.{{ current_minor_version }}.{{ current_maintenance_version }}</a></li>
+{% endif %}
+{% endfor %}
+{% endblock %}
+
+{% block pagecontent %}
+                    <div class="well page active" id="main">
+                        <h1 class="header">{{ name }}</h1>
+{% set current_major_version = plugins[0][4] %}
+{% set current_minor_version = plugins[0][5] %}
+{% set current_maintenance_version = plugins[0][6] %}
+                        <div class="panel panel-info">
+                            <div class="panel-heading" id="version{{ current_major_version }}{{ current_minor_version }}">
+                                <h3 class="panel-title">{{ current_major_version }}.{{ current_minor_version }}</h3>
+                            </div>
+                            <div class="panel-body>">
+                                <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h5>{{ current_maintenance_version }}</h5>
+                                </div>
+                                <div class="panel-body">
+{% for plugin in plugins %}
+{% if current_major_version != plugin[4] or current_minor_version != plugin[5] %}
+    {% set current_major_version = plugin[4] %}
+    {% set current_minor_version = plugin[5] %}
+    {% set current_maintenance_version = plugins[0][6] %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel panel-info">
+                            <div class="panel-heading" id="version{{ current_major_version }}{{ current_minor_version }}">
+                                <h3 class="panel-title">{{ current_major_version }}.{{ current_minor_version }}</h3>
+                            </div>
+                            <div class="panel-body>">
+                                <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h5>{{ current_maintenance_version }}</h5>
+                                </div>
+                                <div class="panel-body">
 {% endif %}
 {% if current_maintenance_version != plugin[6] %}
     {% set current_maintenance_version = plugin[6] %}
-                        <h4>{{ current_maintenance_version }}</h4>
+                                </div>
+                                <div class="panel panel-default">
+                                <div class="panel-heading">
+                                    <h5>{{ current_maintenance_version }}</h5>
+                                </div>
+                                <div class="panel-body">
 {% endif %}
-                        <button type="button" class="btn btn-link" data-toggle="tooltip" data-placement="top" title="" data-original-title="Click to download" onclick="window.location='/plugin/download/{{ plugin[0] }}'">{{ plugin[2] }}-{{ plugin[4] }}.{{ plugin[5] }}.{{ plugin[6] }}.{{ plugin[7] }}</button>
+                                    <button type="button" class="btn btn-link" data-toggle="tooltip" data-placement="top" title="" data-original-title="Click to download" onclick="window.location='/plugin/download/{{ plugin[0] }}'">{{ plugin[2] }}-{{ plugin[4] }}.{{ plugin[5] }}.{{ plugin[6] }}</button>
 {% if admin %}
-                        &nbsp;[ <a href="/plugin/delete/{{ plugin[0] }}">Delete</a> ]
+                                    [ <a href="/plugin/delete/{{ plugin[0] }}">Delete</a> ]
 {% endif %}
 {%  endfor %}
-                    </div>
+                                </div>
+                            </div>
+                        </div>
 {% endblock %}

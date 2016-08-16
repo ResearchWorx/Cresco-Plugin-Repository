@@ -29,7 +29,6 @@ from models import Admin
 
 
 app = Flask(__name__)
-CORS(app)
 if not os.path.isfile('config.json'):
     print("No 'config.json' configuration file detected!")
     exit(1)

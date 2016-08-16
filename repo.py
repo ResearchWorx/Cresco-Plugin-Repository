@@ -19,6 +19,7 @@ import shutil
 from datetime import datetime
 from flask import Flask, request, session, g, redirect, url_for, \
     render_template, flash, escape, send_file, abort, jsonify
+from flask_cors import CORS, cross_origin
 from helpers import read_manifest
 from sqlite3 import OperationalError
 from sqlite3 import dbapi2 as sqlite3
@@ -29,6 +30,7 @@ from models import Admin
 
 
 app = Flask(__name__)
+CORS(app)
 if not os.path.isfile('config.json'):
     print("No 'config.json' configuration file detected!")
     exit(1)

@@ -16,8 +16,9 @@ import json
 import os
 import uuid
 import shutil
+from datetime import datetime
 from flask import Flask, request, session, g, redirect, url_for, \
-    render_template, flash, escape, send_file, abort
+    render_template, flash, escape, send_file, abort, jsonify
 from helpers import read_manifest
 from sqlite3 import OperationalError
 from sqlite3 import dbapi2 as sqlite3
@@ -219,8 +220,32 @@ def upload():
         return redirect('/')
 
 
+@app.route('/plugins')
+def plugins():
+    epoch = datetime.utcfromtimestamp(0)
+    ret = {}
+    names = []
+    plugin_names = query_db('SELECT DISTINCT(name) FROM plugins')
+    for p_name, in list(plugin_names):
+        names.append(p_name)
+        plugin_results = query_db('SELECT id, uploaded, path, major_version, minor_version, maintenance_version, ' +
+                                  'build_version FROM plugins WHERE name = ?', [p_name])
+        versions = []
+        entries = {}
+        for p_id, uploaded, path, major, minor, maintenance, build, in list(plugin_results):
+            versions.append('%s.%s.%s' % (major, minor, maintenance))
+            entries['%s.%s.%s' % (major, minor, maintenance)] = \
+                {'id': p_id, 'uploaded': long((datetime.strptime(uploaded, '%Y-%m-%d %H:%M:%S') -
+                                               epoch).total_seconds() * 1000), 'path': path, 'major_version': major,
+                 'minor_version': minor, 'maintenance_version': maintenance, 'build_version': build}
+        entries['_versions'] = versions
+        ret[p_name] = entries
+        ret['_names'] = names
+    return jsonify(ret)
+
+
 @app.route('/plugins/<name>')
-def plugins(name):
+def plugins_for_name(name):
     admin = None
     if 'user_id' in session:
         ret = query_db('SELECT * FROM admins WHERE id = ?', [escape(session['user_id'])], one=True)
@@ -236,7 +261,7 @@ def plugins(name):
 
 @app.route('/plugin/download/<name>-<major>.<minor>.<maint>.jar')
 def download_latest_plugin(name, major, minor, maint):
-    print 'name: %s, major: %s, minor: %s, maint: %s' % (name, major, minor, maint)
+    print('name: %s, major: %s, minor: %s, maint: %s', name, major, minor, maint)
     plugin = query_db('SELECT path FROM plugins WHERE name = ? AND major_version = ? AND minor_version = ? AND ' +
                       'maintenance_version = ? ORDER BY build_version DESC, uploaded DESC LIMIT 1',
                       [name, major, minor, maint])
@@ -247,7 +272,7 @@ def download_latest_plugin(name, major, minor, maint):
 
 @app.route('/plugin/download/<build>/<name>-<major>.<minor>.<maint>.jar')
 def download_latest_plugin_at_build_version(name, major, minor, maint, build):
-    print 'name: %s, major: %s, minor: %s, maint: %s, build: %s' % (name, major, minor, maint, build)
+    print('name: %s, major: %s, minor: %s, maint: %s, build: %s', name, major, minor, maint, build)
     plugin = query_db('SELECT path FROM plugins WHERE name = ? AND major_version = ? AND minor_version = ? AND ' +
                       'maintenance_version = ? AND build_version = ? ORDER BY  uploaded DESC LIMIT 1',
                       [name, major, minor, maint, build])

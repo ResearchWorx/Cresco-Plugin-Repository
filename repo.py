@@ -37,6 +37,50 @@ with open('config.json') as json_data_file:
 app.secret_key = config['secret_key']
 
 
+def crossdomain(origin=None, methods=None, headers=None,
+                max_age=21600, attach_to_all=True,
+                automatic_options=True):
+    if methods is not None:
+        methods = ', '.join(sorted(x.upper() for x in methods))
+    if headers is not None and not isinstance(headers, basestring):
+        headers = ', '.join(x.upper() for x in headers)
+    if not isinstance(origin, basestring):
+        origin = ', '.join(origin)
+    if isinstance(max_age, timedelta):
+        max_age = max_age.total_seconds()
+
+    def get_methods():
+        if methods is not None:
+            return methods
+
+        options_resp = current_app.make_default_options_response()
+        return options_resp.headers['allow']
+
+    def decorator(f):
+        def wrapped_function(*args, **kwargs):
+            if automatic_options and request.method == 'OPTIONS':
+                resp = current_app.make_default_options_response()
+            else:
+                resp = make_response(f(*args, **kwargs))
+            if not attach_to_all and request.method != 'OPTIONS':
+                return resp
+
+            h = resp.headers
+            h['Access-Control-Allow-Origin'] = origin
+            h['Access-Control-Allow-Methods'] = get_methods()
+            h['Access-Control-Max-Age'] = str(max_age)
+            h['Access-Control-Allow-Credentials'] = 'true'
+            h['Access-Control-Allow-Headers'] = \
+                "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+            if headers is not None:
+                h['Access-Control-Allow-Headers'] = headers
+            return resp
+
+        f.provide_automatic_options = False
+        return update_wrapper(wrapped_function, f)
+    return decorator
+
+
 def connect_db():
     """Connects to the specific database."""
     rv = sqlite3.connect(os.path.join(config['database']))
@@ -91,12 +135,6 @@ def close_db(error):
         g.sqlite_db.close()
     if error is not None:
         print(error)
-
-
-@app.after_request
-def add_headers(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
 
 
 @app.route('/')
@@ -227,6 +265,7 @@ def upload():
 
 
 @app.route('/plugins')
+@crossdomain(origin='*')
 def plugins():
     epoch = datetime.utcfromtimestamp(0)
     ret = {}

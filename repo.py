@@ -19,7 +19,6 @@ import shutil
 from datetime import datetime
 from flask import Flask, request, session, g, redirect, url_for, \
     render_template, flash, escape, send_file, abort, jsonify
-from flask_cors import CORS
 from helpers import read_manifest
 from sqlite3 import OperationalError
 from sqlite3 import dbapi2 as sqlite3
@@ -93,6 +92,12 @@ def close_db(error):
         g.sqlite_db.close()
     if error is not None:
         print(error)
+
+
+@app.after_request
+def add_headers(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
 
 
 @app.route('/')

@@ -19,7 +19,7 @@ import shutil
 from datetime import datetime
 from flask import Flask, request, session, g, redirect, url_for, \
     render_template, flash, escape, send_file, abort, jsonify
-from flask_cors import CORS, cross_origin
+from flask.ext.cors import CORS
 from helpers import read_manifest
 from sqlite3 import OperationalError
 from sqlite3 import dbapi2 as sqlite3
